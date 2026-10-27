@@ -9,8 +9,9 @@
 #
 ######################################################
 
-QEMU_CMD='qemu-system-i386'																# Nazwa polecenia emulatoara
-QEMU_PARAMS='-display curses -drive format=raw,file='									# Parametry polecenia emulatora
+QEMU_CMD='qemu-system-i386'
+# -display curses																# Nazwa polecenia emulatoara
+QEMU_PARAMS='-drive format=raw,file='									# Parametry polecenia emulatora
 ZIP_CMD='zip'																			# Komenda służąca do tworzenia archiwum
 CREATE_DATE_CMD="date +%Y_%m_%d_%H_%M_%S"												# Polecenie tworzące datę w postaci którą można zawrzeć w nazwie pliku
 MINIX_MOUNT_CMD='mount -t minix -o loop,offset=1483776'									# Polecenie montujące dla minixa
@@ -21,7 +22,10 @@ MINIX_SOURCE_IMAGE_NAME="minix203.img.ori"												# Nazwa obrazu źródłowe
 MINIX_SOURCE_URL='http://www.ia.pw.edu.pl/~tkruk/edu/soi.b/lab/minix/minix203.img'		# Skąd pobieramy czysty obraz?
 MINIX_USR_LOCAL_DIR='minix_usr'															# Katalog roboczy pod którym będzie montowany minix
 
+WORK_MINIX_USR_LOCAL_COPY='usr'
+USR_COPY_TARGETS=('include' 'src')
 
+CMAKELIST_FILE="CMakeLists.txt"
 
 # Sprawdź w pierwszym kroku, czy jesteśmy rootem.
 # Bezwzględnie potrzebujemy tego do mount itp
@@ -62,6 +66,28 @@ mkdir -p $MINIX_USR_LOCAL_DIR
 run_minix()
 {
 	$QEMU_CMD $QEMU_PARAMS$MINIX_CUR_NAME
+}
+
+ensure_work_usr_copy_exists()
+{
+  if [ ! -d $WORK_MINIX_USR_LOCAL_COPY ]; then
+    mkdir -p $WORK_MINIX_USR_LOCAL_COPY
+
+    for COPY_TARGET in "${USR_COPY_TARGETS[@]}";
+    do
+      cp -r $MINIX_USR_LOCAL_DIR/$COPY_TARGET $WORK_MINIX_USR_LOCAL_COPY/
+    done
+
+    echo "-> Utworzono katalog do pracy lokalnej: $WORK_MINIX_USR_LOCAL_COPY"
+  fi
+}
+
+copy_work_dir_to_usr()
+{
+  cp -r $WORK_MINIX_USR_LOCAL_COPY/* $MINIX_USR_LOCAL_DIR
+  set `ls -la $WORK_MINIX_USR_LOCAL_COPY | wc`
+  COPIED=`expr $1 - 3`
+  echo "Skopiowana liczba obiektów: $COPIED"
 }
 
 # Backupuje aktualny obraz
@@ -151,6 +177,8 @@ echo
 # Zaczynamy z zamontowanym obrazem.
 mount_image
 
+ensure_work_usr_copy_exists
+
 while true
 do
 	# Dopóki użytkownik nie wyjdzie z programu pokazujemy my takie oto menu
@@ -163,6 +191,7 @@ do
 	echo 	"== 4) Przywróć poprzednią wersję"
 	echo 	"== 5) Wyeksportuj zmienione pliki do archiwum"
 	echo 	"== 6) Przenieś aktualny obraz na nośnik zewnętrzny"
+	echo 	"== 7) Skopiuj zawartość katalogu pracy $WORK_MINIX_USR_LOCAL_COPY do obrazu"
 	echo 	"== g) Uruchom gedit jako root"
 	echo 	"== q) Zakończ pracę, idę spać."
 	echo -n	"== Wybór: "; read CHOICE
@@ -299,6 +328,9 @@ do
 			done
 			
 			;;
+	  "7")
+	    copy_work_dir_to_usr
+	    ;;
 		"g")
 			gedit &
 			echo "Chwileczkę..."
