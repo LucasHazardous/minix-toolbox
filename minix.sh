@@ -25,8 +25,6 @@ MINIX_USR_LOCAL_DIR='minix_usr'															# Katalog roboczy pod którym będ
 WORK_MINIX_USR_LOCAL_COPY='usr'
 USR_COPY_TARGETS=('include' 'src')
 
-CMAKELIST_FILE="CMakeLists.txt"
-
 # Sprawdź w pierwszym kroku, czy jesteśmy rootem.
 # Bezwzględnie potrzebujemy tego do mount itp
 if test $UID -ne 0
