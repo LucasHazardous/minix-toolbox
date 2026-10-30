@@ -82,10 +82,28 @@ ensure_work_usr_copy_exists()
 
 copy_work_dir_to_usr()
 {
-  cp -r $WORK_MINIX_USR_LOCAL_COPY/* $MINIX_USR_LOCAL_DIR
-  set `ls -la $WORK_MINIX_USR_LOCAL_COPY | wc`
-  COPIED=`expr $1 - 3`
-  echo "Skopiowana liczba obiektów: $COPIED"
+  COPIED=0
+  SKIPPED=0
+
+  # Znajdź wszystkie pliki w katalogu roboczym i kopiuj tylko zmienione/nowe
+  while IFS= read -r -d '' SRC_FILE; do
+    # Ścieżka relatywna względem katalogu roboczego
+    REL_PATH="${SRC_FILE#$WORK_MINIX_USR_LOCAL_COPY/}"
+    DST_FILE="$MINIX_USR_LOCAL_DIR/$REL_PATH"
+
+    # Kopiuj jeśli plik docelowy nie istnieje lub różni się zawartością
+    if [ ! -f "$DST_FILE" ] || ! cmp -s "$SRC_FILE" "$DST_FILE"; then
+      # Upewnij się, że katalog docelowy istnieje
+      mkdir -p "$(dirname "$DST_FILE")"
+      cp "$SRC_FILE" "$DST_FILE"
+      echo "  Skopiowano: $REL_PATH"
+      COPIED=$((COPIED + 1))
+    else
+      SKIPPED=$((SKIPPED + 1))
+    fi
+  done < <(find "$WORK_MINIX_USR_LOCAL_COPY" -type f -print0)
+
+  echo "Skopiowano plików: $COPIED, pominiętych (bez zmian): $SKIPPED"
 }
 
 # Backupuje aktualny obraz
